@@ -1,0 +1,904 @@
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include <string>
+using namespace std;
+using namespace sf;
+struct bin_tree {
+	int key;
+	bin_tree* prev;
+	bin_tree* left;
+	bin_tree* right;
+};
+struct avl {
+	int key;
+	int h;
+	avl* prev;
+	avl* left;
+	avl* right;
+};
+void ins_avl(avl*& A, int e) {
+	if (A == nullptr) {
+		A = new avl;
+		A->key = e;
+		A->left = nullptr;
+		A->right = nullptr;
+		A->prev = nullptr;
+		A->h = 1;
+		return;
+	}
+	if (e < A->key) {
+		if (A->left == nullptr) {
+			avl* q = new avl;
+			q->key = e;
+			q->left = nullptr;
+			q->right = nullptr;
+			A->left = q;
+			q->prev = A;
+			A->left->h = 1;
+			if (A->right == nullptr) {
+				A->h = A->left->h + 1;
+			}
+			else {
+				A->h = max(A->left->h, A->right->h) + 1;
+			}
+			return;
+		}
+		ins_avl(A->left, e);
+		if (A->right != nullptr and A->left != nullptr) {
+			A->h = max(A->left->h, A->right->h) + 1;
+		}
+		else if (A->right == nullptr) {
+			A->h = A->left->h + 1;
+		}
+		else {
+			A->h = A->right->h + 1;
+		}
+		return;
+	}
+	if (e > A->key) {
+		if (A->right == nullptr) {
+			avl* q = new avl;
+			q->key = e;
+			q->left = nullptr;
+			q->right = nullptr;
+			A->right = q;
+			q->prev = A;
+			A->right->h = 1;
+			if (A->left == nullptr) {
+				A->h = A->right->h + 1;
+			}
+			else {
+				A->h = max(A->left->h, A->right->h) + 1;
+			}
+			return;
+		}
+		ins_avl(A->right, e);
+		if (A->right != nullptr and A->left != nullptr) {
+			A->h = max(A->left->h, A->right->h) + 1;
+		}
+		else if (A->right == nullptr) {
+			A->h = A->left->h + 1;
+		}
+		else {
+			A->h = A->right->h + 1;
+		}
+		return;
+	}
+}
+void fix_h(avl*& d) {
+	if (d == nullptr) {
+		return;
+	}
+	if (d->left == nullptr and d->right == nullptr) {
+		d->h = 1;
+		return;
+	}
+	fix_h(d->left);
+	fix_h(d->right);
+	if (d->right == nullptr) {
+		d->h = d->left->h + 1;
+		return;
+	}
+	if (d->left == nullptr) {
+		d->h = d->right->h + 1;
+		return;
+	}
+	d->h = max(d->left->h, d->right->h) + 1;
+	return;
+}
+void big_turn(avl*& d, bool c) {
+	if (c) {
+		avl* p = d;
+		avl* q = p->right;
+		avl* t = q->left;
+		p->right = t->left;
+		if (t->left != nullptr) {
+			t->left->prev = p;
+		}
+		t->left = p;
+		if (p->prev != nullptr) {
+			t->prev = p->prev;
+			if (p->prev->left == p) {
+				p->prev->left = t;
+			}
+			else {
+				p->prev->right = t;
+			}
+		}
+		else {
+			t->prev = p->prev;
+		}
+		p->prev = t;
+		if (t->right != nullptr) {
+			t->right->prev = q;
+		}
+		q->left = t->right;
+		t->right = q;
+		q->prev = t;
+		p = t;
+		d = p;
+		//пересчет высот
+		fix_h(d);
+	}
+	else {
+		avl* p = d;
+		avl* q = p->left;
+		avl* t = q->right;		
+		p->left = t->right;
+		if (t->right != nullptr) {
+			t->right->prev = p;
+		}
+		t->right = p;
+		if (p->prev != nullptr) {
+			t->prev = p->prev;
+			if (p->prev->left == d) {				
+				p->prev->left = t;
+				p->prev = t;
+			}
+			else {				
+				p->prev->right = t;
+				p->prev = t;
+			}
+		}
+		else {
+			t->prev = p; 
+			p->prev = t;
+		}		
+		if (t->left != nullptr) {
+			t->left->prev = q;
+		}
+		q->right = t->left;
+		t->left = q;
+		q->prev = t;
+		p = t;
+		d = p;
+		//пересчет высот
+		fix_h(d);
+	}
+}
+void small_turn(avl*& d, bool c) {	
+	if (c) {
+		avl* p = d;
+		avl* q = p->right;
+		d->right = q->left;
+		if (p->right != nullptr) {
+			p->right->prev = p;
+		}
+		q->left = p;
+		if (p->prev != nullptr) {
+			q->prev = p->prev;
+			if (p->prev->left == p) {
+				p->prev->left = q;
+			}
+			else {
+				p->prev->right = q;
+			}			
+		}
+		else {
+			q->prev = p->prev;
+		}
+		p->prev = q;
+		p = q;
+		d = p;
+		//пересчет высот
+		fix_h(d);
+	}
+	else {
+		avl* p = d;
+		avl* q = p->left;
+		p->left = q->right;
+		if (p->left != nullptr) {
+			p->left->prev = p;
+		}
+		q->right = p;
+		if (p->prev != nullptr) {
+			q->prev = p->prev;
+			if (p->prev->left == p) {
+				p->prev->left = q;
+			}
+			else {
+				p->prev->right = q;
+			}
+		}
+		else {
+			q->prev = p->prev;
+		}
+		p->prev = q;
+		p = q;
+		d = p;
+		//пересчет высот
+		fix_h(d);
+	}
+}
+void balanced(avl*& d) {
+	if (d == nullptr) {
+		return;
+	}
+	if (d->left == nullptr) {
+		if (d->right == nullptr) {
+			return;
+		}
+		if (d->right->h > 1) {
+			if (d->right->left == nullptr) {
+				small_turn(d, 1);
+			}
+			else {
+				big_turn(d, 1);
+			}
+		}
+		return;
+	}
+	if (d->right == nullptr) {
+		if (d->left->h > 1) {
+			if (d->left->left == nullptr) {
+				big_turn(d, 0);
+			}
+			else {
+				small_turn(d, 0);
+			}
+		}
+		return;
+	}
+	if (d->left->h + 1 < d->right->h) {
+		if (d->right->right == nullptr) {
+			big_turn(d, 1);
+			return;
+		}
+		if (d->right->left == nullptr) {
+			small_turn(d, 1);
+			return;
+		}
+		if (d->right->right->h < d->right->left->h) {
+			big_turn(d, 1);
+		}
+		else {
+			small_turn(d, 1);
+		}
+		return;
+	}
+	if (d->left->h > d->right->h + 1) {
+		if (d->left->right == nullptr) {
+			small_turn(d, 0);
+			return;
+		}
+		if (d->left->left == nullptr) {
+			big_turn(d, 0);
+			return;
+		}
+		if (d->left->right->h > d->left->left->h) {
+			big_turn(d, 0);
+		}
+		else {
+			small_turn(d, 0);
+		}
+	}
+	return;
+}
+void balance(avl*& A) {
+	if (A == nullptr) {
+		return;
+	}
+	balanced(A);
+	balance(A->left);
+	balance(A->right);
+	return;
+}
+void ins(bin_tree*& T, int e) {
+	if (T == nullptr) {
+		T = new bin_tree;
+		T->key = e;
+		T->left = nullptr;
+		T->right = nullptr;	
+		T->prev = nullptr;
+		return;
+	}
+	if (e < T->key) {
+		if (T->left == nullptr) {
+			bin_tree* q = new bin_tree;
+			q->key = e;
+			q->left = nullptr;
+			q->right = nullptr;
+			T->left = q;
+			q->prev = T;
+			return;
+		}
+		ins(T->left, e);
+	}
+	else if (e > T->key) {
+		if (T->right == nullptr) {
+			bin_tree* q = new bin_tree;
+			q->key = e;
+			q->left = nullptr;
+			q->right = nullptr;
+			T->right = q;
+			q->prev = T;
+			return;
+		}
+		ins(T->right, e);
+	}
+	return;
+}
+void del_avl(avl*& A, int e) {
+	avl* q = A;
+	while (q != nullptr and q->key != e) {
+		if (q->key > e) {
+			q = q->left;
+		}
+		else {
+			q = q->right;
+		}
+	}
+	if (q == nullptr) {
+		return;
+	}
+	avl* p = q;
+	if (p->right == nullptr) {
+		if (p->left == nullptr) {
+			if (p->prev == nullptr) {
+				A = nullptr;
+				delete p;
+				fix_h(A);
+				return;
+			}
+			if (p->prev->left == p) {
+				p->prev->left = nullptr;
+				delete p;
+			}
+			else {
+				p->prev->right = nullptr;
+				delete p;
+			}
+		}
+		else {
+			if (p->prev == nullptr) {
+				A = p->left;
+				A->prev = nullptr;
+				delete p;
+				fix_h(A);
+				return;
+			}
+			if (p->prev->left == p) {
+				p->prev->left = p->left;
+				p->left->prev = p->prev;
+				delete p;
+			}
+			else {
+				p->prev->right = p->left;
+				p->left->prev = p->prev;
+				delete p;
+			}
+		}
+		fix_h(A);
+		return;
+	}
+	p = p->right;
+	if (p->left == nullptr) {
+		q->key = p->key;
+		q->right = p->right;
+		delete p;
+		fix_h(A);
+		return;
+	}
+	while (p->left != nullptr) {
+		p = p->left;
+	}
+	if (p->right == nullptr) {
+		q->key = p->key;
+		p->prev->left = nullptr;
+		delete p;
+		fix_h(A);
+		return;
+	}
+	else {
+		q->key = p->key;
+		p->prev->left = p->right;
+		p->right->prev = p->prev;
+		delete p;
+	}
+	fix_h(A);
+	return;
+}
+void del(bin_tree*& T, int e) {
+	bin_tree* q = T;
+	while (q != nullptr and q->key != e) {
+		if (q->key > e) {
+			q = q->left;
+		}
+		else {
+			q = q->right;
+		}
+	}
+	if (q == nullptr) {
+		return;
+	}
+	bin_tree* p = q;
+	if (p->right == nullptr) {
+		if (p->left == nullptr) {
+			if (p->prev == nullptr) {
+				T = nullptr;
+				delete p;	
+				return;
+			}
+			if (p->prev->left == p) {
+				p->prev->left = nullptr;
+				delete p;
+			}
+			else {
+				p->prev->right = nullptr;
+				delete p;
+			}
+		}
+		else {
+			if (p->prev == nullptr) {
+				T = p->left;
+				T->prev = nullptr;
+				delete p;
+				return;
+			}
+			if (p->prev->left == p) {
+				p->prev->left = p->left;
+				p->left->prev = p->prev;
+				delete p;
+			}
+			else {
+				p->prev->right = p->left;
+				p->left->prev = p->prev;
+				delete p;
+			}
+		}
+		return;
+	}
+	p = p->right;
+	if (p->left == nullptr) {
+		q->key = p->key;
+		q->right = p->right;
+		delete p;
+		return;
+	}
+	while (p->left != nullptr) {
+		p = p->left;
+	}
+	if (p->right == nullptr) {
+		q->key = p->key;
+		p->prev->left = nullptr;
+		delete p;
+		return;
+	}
+	else {
+		q->key = p->key;
+		p->prev->left = p->right;
+		p->right->prev = p->prev;
+		delete p;
+	}
+	return;
+}
+void draw_top(RenderWindow& window_global, int k, int x, int y, int size) {
+	if (x+size >= 1100 or x <= 10 or y <= 8 or y+size >= 700) {
+		return;
+	}
+	Text text_top;
+	Font font;
+	font.loadFromFile("20179.ttf");
+	text_top.setFont(font);
+	text_top.setCharacterSize(size);
+	text_top.setPosition(Vector2f(x, y));
+	text_top.setFillColor(Color::Black);
+	text_top.setString(to_string(k));
+	window_global.draw(text_top);
+	return;
+}
+void draw_tree(RenderWindow& window_global, bin_tree* T, int x, int y, int d, int size) {
+	if (T == nullptr) {
+		return;
+	}	
+	draw_top(window_global, T->key, x, y, size);
+	draw_tree(window_global, T->left, x-150+25*d, y+50, d+1, size);
+	draw_tree(window_global, T->right, x+150-25*d, y+50, d+1, size);
+	return;
+}
+void draw_top_avl(RenderWindow& window_global, int k, int x, int y, int size) {
+	if (x+to_string(k).length()*size >= 1200 or x <= 10 or y <= 8 or y+size >= 700) {
+		return;
+	}
+	Text text_top;
+	Font font;
+	font.loadFromFile("20179.ttf");
+	text_top.setFont(font);
+	text_top.setCharacterSize(size);
+	text_top.setPosition(Vector2f(x, y));
+	text_top.setFillColor(Color::Black);
+	text_top.setString(to_string(k));
+	window_global.draw(text_top);
+	return;
+}
+void draw_avl(RenderWindow& window_global, avl* A, int x, int y, int d, int size) {
+	if (A == nullptr) {
+		return;
+	}
+	draw_top_avl(window_global, A->key, x, y, size);
+	draw_avl(window_global, A->left, x - 150 + 10 * d, y + 50, d + 1, size);
+	draw_avl(window_global, A->right, x + 150 - 10 * d, y + 50, d + 1, size);
+	return;
+}
+int main() {
+	avl* A = nullptr;
+	/*int i = 0;
+	while (true) {
+		cin >> i;
+		if (i == 0) {
+			break;
+		}
+		ins_avl(A, i);
+		balance(A);
+	}
+	del_avl(A, 54);*/
+	int size = 20;
+	int x = 500;
+	int y = 20;
+	bin_tree* T = nullptr;
+	bool b = false;
+	Font font;
+	font.loadFromFile("20179.ttf");
+	Text insert_tree;
+	insert_tree.setFont(font);
+	insert_tree.setString("Insert one number");
+	insert_tree.setCharacterSize(18);
+	insert_tree.setFillColor(Color::Black);
+	insert_tree.setPosition(Vector2f(1205, 15));
+	Text delete_tree;
+	delete_tree.setFont(font);
+	delete_tree.setString("Delete one number");
+	delete_tree.setCharacterSize(18);
+	delete_tree.setFillColor(Color::Black);
+	delete_tree.setPosition(Vector2f(1205, 75));
+	Text insert_trees;
+	insert_trees.setFont(font);
+	insert_trees.setString("Insert numbers");
+	insert_trees.setCharacterSize(18);
+	insert_trees.setFillColor(Color::Black);
+	insert_trees.setPosition(Vector2f(1205, 135));
+	RenderWindow window_global(VideoMode(1500, 800), "Trees");
+	RectangleShape shape_trees(Vector2f(1100, 700));
+	shape_trees.setOutlineThickness(3);
+	shape_trees.setOutlineColor(Color(73, 66, 61));
+	shape_trees.setPosition(Vector2f(10, 8));
+	shape_trees.setFillColor(Color::White);
+	RectangleShape ins_tree(Vector2f(150, 50));
+	ins_tree.setOutlineThickness(3);
+	ins_tree.setOutlineColor(Color(73, 66, 61));
+	ins_tree.setPosition(Vector2f(1200, 10));
+	ins_tree.setFillColor(Color::White);
+	RectangleShape del_tree(Vector2f(150, 50));
+	del_tree.setOutlineThickness(3);
+	del_tree.setOutlineColor(Color(73, 66, 61));
+	del_tree.setPosition(Vector2f(1200, 70));
+	del_tree.setFillColor(Color::White);
+	RectangleShape ins_trees(Vector2f(150, 50));
+	ins_trees.setOutlineThickness(3);
+	ins_trees.setOutlineColor(Color(73, 66, 61));
+	ins_trees.setPosition(Vector2f(1200, 130));
+	ins_trees.setFillColor(Color::White);
+	RectangleShape zoom_p(Vector2f(70, 50));
+	zoom_p.setOutlineThickness(3);
+	zoom_p.setOutlineColor(Color(73, 66, 61));
+	zoom_p.setPosition(Vector2f(1200, 190));
+	zoom_p.setFillColor(Color::White);
+	RectangleShape zoom_m(Vector2f(70, 50));
+	zoom_m.setOutlineThickness(3);
+	zoom_m.setOutlineColor(Color(73, 66, 61));
+	zoom_m.setPosition(Vector2f(1280, 190));
+	zoom_m.setFillColor(Color::White);
+	RectangleShape move_u(Vector2f(50, 50));
+	move_u.setOutlineThickness(3);
+	move_u.setOutlineColor(Color(73, 66, 61));
+	move_u.setPosition(Vector2f(1250, 250));
+	move_u.setFillColor(Color::White);
+	RectangleShape move_l(Vector2f(50, 50));
+	move_l.setOutlineThickness(3);
+	move_l.setOutlineColor(Color(73, 66, 61));
+	move_l.setPosition(Vector2f(1220, 310));
+	move_l.setFillColor(Color::White);
+	RectangleShape move_r(Vector2f(50, 50));
+	move_r.setOutlineThickness(3);
+	move_r.setOutlineColor(Color(73, 66, 61));
+	move_r.setPosition(Vector2f(1280, 310));
+	move_r.setFillColor(Color::White);
+	RectangleShape move_d(Vector2f(50, 50));
+	move_d.setOutlineThickness(3);
+	move_d.setOutlineColor(Color(73, 66, 61));
+	move_d.setPosition(Vector2f(1250, 370));
+	move_d.setFillColor(Color::White);
+	Text text_zoom_m;
+	text_zoom_m.setFont(font);
+	text_zoom_m.setString("Decrease");
+	text_zoom_m.setCharacterSize(18);
+	text_zoom_m.setFillColor(Color::Black);
+	text_zoom_m.setPosition(Vector2f(1200, 195));
+	Text text_zoom_p;
+	text_zoom_p.setFont(font);
+	text_zoom_p.setString("Increase");
+	text_zoom_p.setCharacterSize(18);
+	text_zoom_p.setFillColor(Color::Black);
+	text_zoom_p.setPosition(Vector2f(1285, 195));
+	RectangleShape change_tree(Vector2f(150, 50));
+	change_tree.setOutlineThickness(3);
+	change_tree.setOutlineColor(Color(73, 66, 61));
+	change_tree.setPosition(Vector2f(1200, 600));
+	change_tree.setFillColor(Color::Cyan);
+	Text tree;
+	tree.setFont(font);
+	tree.setString("Bin tree");
+	tree.setCharacterSize(18);
+	tree.setFillColor(Color::Black);
+	tree.setPosition(Vector2f(1205, 600));
+	while (window_global.isOpen()) {
+		Event event;
+		while (window_global.pollEvent(event)) {
+			if (event.type == Event::Closed or event.key.code == Keyboard::Escape) {
+				window_global.close();
+			}
+			//insert one
+			if (Mouse::getPosition(window_global).x >= 1200.f and Mouse::getPosition(window_global).x <= 1350.f
+			and Mouse::getPosition(window_global).y >= 10.f and Mouse::getPosition(window_global).y <= 65.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				RenderWindow window_insert_tree(VideoMode(400, 300), "Input only one number");
+				int t = 0;
+				int num = 0;
+				string str = "", s = "";
+				Text text_ins;
+				text_ins.setFont(font);
+				text_ins.setString("");
+				text_ins.setPosition(Vector2f(10, 10));
+				text_ins.setCharacterSize(24);
+				text_ins.setFillColor(Color::Black);
+				while (window_insert_tree.isOpen()) {
+					Event event_ins;
+					while (window_insert_tree.pollEvent(event_ins)) {
+						if (event_ins.type == Event::Closed) {
+							window_insert_tree.close();
+						}
+						if (event_ins.type == Event::KeyPressed and event_ins.key.code == Keyboard::BackSpace) {
+							t--;
+							for (int i = 0; i < t; i++) {
+								s += str[i];
+							}
+							str = s;
+							s = "";
+							text_ins.setString(str);
+						}
+						else if (event_ins.type == Event::KeyPressed and event_ins.key.code == Keyboard::Enter) {
+							for (int i = 0; i < str.size(); i++) {
+								num = num * 10 + (str[i] - '0');
+							}
+							if (!b) {
+								ins(T, num);
+							}
+							else {
+								ins_avl(A, num);
+								balance(A);
+							}
+							//cout << T->key;
+							window_insert_tree.close();
+						}
+						else if (event_ins.type == Event::TextEntered and event_ins.text.unicode >= 32
+							and event_ins.text.unicode <= 127) {
+							str += event_ins.text.unicode;
+							t++;
+							text_ins.setString(str);
+						}
+					}
+					window_insert_tree.clear(Color(245, 245, 220));
+					window_insert_tree.draw(text_ins);
+					window_insert_tree.display();
+				}
+
+			}
+			//delete
+			else if (Mouse::getPosition(window_global).x >= 1200.f and Mouse::getPosition(window_global).x <= 1350.f
+			and Mouse::getPosition(window_global).y >= 70.f and Mouse::getPosition(window_global).y <= 125.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				RenderWindow window_del(VideoMode(400, 300), "Input only one number");
+				int t = 0;
+				int num = 0;
+				string str = "", s = "";
+				Text text_del;
+				text_del.setFont(font);
+				text_del.setString("");
+				text_del.setPosition(Vector2f(10, 10));
+				text_del.setCharacterSize(24);
+				text_del.setFillColor(Color::Black);
+				while (window_del.isOpen()) {
+					Event event_del;
+					while (window_del.pollEvent(event_del)) {
+						if (event_del.type == Event::Closed) {
+							window_del.close();
+						}
+						if (event_del.type == Event::KeyPressed and event_del.key.code == Keyboard::BackSpace) {
+							t--;
+							for (int i = 0; i < t; i++) {
+								s += str[i];
+							}
+							str = s;
+							s = "";
+							text_del.setString(str);
+						}
+						else if (event_del.type == Event::KeyPressed and event_del.key.code == Keyboard::Enter) {
+							for (int i = 0; i < str.size(); i++) {
+								num = num * 10 + (str[i] - '0');
+							}
+							if (!b) {
+								del(T, num);
+							}
+							else {
+								del_avl(A, num);
+								balance(A);
+							}
+							window_del.close();
+						}
+						else if (event_del.type == Event::TextEntered and event_del.text.unicode >= 32
+							and event_del.text.unicode <= 127) {
+							str += event_del.text.unicode;
+							t++;
+							text_del.setString(str);
+						}
+					}
+					window_del.clear(Color(245, 245, 220));
+					window_del.draw(text_del);
+					window_del.display();
+				}
+			}
+			//ins many
+			else if (Mouse::getPosition(window_global).x >= 1200.f and Mouse::getPosition(window_global).x <= 1350.f
+			and Mouse::getPosition(window_global).y >= 130.f and Mouse::getPosition(window_global).y <= 185.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				RenderWindow window_insert_tree(VideoMode(400, 300), "Input only one number");
+				int t = 0;
+				int num = 0;
+				string str = "", s = "";
+				Text text_ins;	
+				text_ins.setFont(font);
+				text_ins.setString("");
+				text_ins.setPosition(Vector2f(10, 10));
+				text_ins.setCharacterSize(24);
+				text_ins.setFillColor(Color::Black);
+				while (window_insert_tree.isOpen()) {
+					Event event_ins;
+					while (window_insert_tree.pollEvent(event_ins)) {
+						if (event_ins.type == Event::Closed) {
+							window_insert_tree.close();
+						}
+						if (event_ins.type == Event::KeyPressed and event_ins.key.code == Keyboard::BackSpace) {
+							t--;
+							for (int i = 0; i < t; i++) {
+								s += str[i];
+							}
+							str = s;
+							s = "";
+							text_ins.setString(str);
+						}
+						else if (event_ins.type == Event::KeyPressed and event_ins.key.code == Keyboard::Enter) {
+							int i = 0;
+							while (i < str.size()) {
+								while (str[i] != ' ' and i < str.size()) {
+									num = num * 10 + (str[i] - '0');
+									i++;
+								}	
+								if (!b) {
+									ins(T, num);
+								}
+								else {
+									ins_avl(A, num);
+									balance(A);
+								}
+								num = 0;
+								i++;
+							}							
+							//cout << T->key;
+							window_insert_tree.close();
+						}
+						else if (event_ins.type == Event::TextEntered and event_ins.text.unicode >= 32
+							and event_ins.text.unicode <= 127) {
+							str += event_ins.text.unicode;
+							t++;
+							text_ins.setString(str);
+						}
+					}
+					window_insert_tree.clear(Color(245, 245, 220));
+					window_insert_tree.draw(text_ins);
+					window_insert_tree.display();
+				}
+			}
+			//change tree
+			else if (Mouse::getPosition(window_global).x >= 1200.f and Mouse::getPosition(window_global).x <= 1350.f
+			and Mouse::getPosition(window_global).y >= 600.f and Mouse::getPosition(window_global).y <= 650.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				b = !b;
+				if (!b) {
+					tree.setString("Bin tree");
+				}
+				else {
+					tree.setString("AVL");
+				}
+			}
+			else if (Mouse::getPosition(window_global).x >= 1200.f and Mouse::getPosition(window_global).x <= 1270.f
+			and Mouse::getPosition(window_global).y >= 190.f and Mouse::getPosition(window_global).y <= 245.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				size -= 5;
+			}
+			else if (Mouse::getPosition(window_global).x >= 1285.f and Mouse::getPosition(window_global).x <= 1360.f
+			and Mouse::getPosition(window_global).y >= 190.f and Mouse::getPosition(window_global).y <= 245.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				size += 5;
+			}
+			else if (Mouse::getPosition(window_global).x >= 1250.f and Mouse::getPosition(window_global).x <= 1300.f
+			and Mouse::getPosition(window_global).y >= 250.f and Mouse::getPosition(window_global).y <= 305.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				y -= 20;
+			}
+			else if (Mouse::getPosition(window_global).x >= 1220.f and Mouse::getPosition(window_global).x <= 1270.f
+			and Mouse::getPosition(window_global).y >= 310.f and Mouse::getPosition(window_global).y <= 365.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				x -= 20;
+			}
+			else if (Mouse::getPosition(window_global).x >= 1280.f and Mouse::getPosition(window_global).x <= 1330.f
+			and Mouse::getPosition(window_global).y >= 310.f and Mouse::getPosition(window_global).y <= 365.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				x += 20;
+			}
+			else if (Mouse::getPosition(window_global).x >= 1250.f and Mouse::getPosition(window_global).x <= 1300.f
+			and Mouse::getPosition(window_global).y >= 370.f and Mouse::getPosition(window_global).y <= 425.f
+			and Mouse::isButtonPressed(Mouse::Left)) {
+				y += 20;
+			}
+
+		}	
+		window_global.clear(Color(245, 245, 220));
+
+		window_global.draw(shape_trees);
+		window_global.draw(ins_tree);
+		window_global.draw(del_tree);
+		window_global.draw(ins_trees);
+		window_global.draw(insert_tree);
+		window_global.draw(delete_tree);		
+		window_global.draw(insert_trees);
+		window_global.draw(zoom_m);
+		window_global.draw(zoom_p);
+		window_global.draw(text_zoom_p);
+		window_global.draw(text_zoom_m);
+		window_global.draw(move_u);
+		window_global.draw(move_l);
+		window_global.draw(move_r);
+		window_global.draw(move_d);
+		window_global.draw(change_tree);		
+		window_global.draw(tree);
+		if (!b) {
+			draw_tree(window_global, T, x, y, 0, size);
+		}
+		else {
+			draw_avl(window_global, A, x, y, 0, size);
+		}
+		window_global.display();
+	}
+
+}
+
